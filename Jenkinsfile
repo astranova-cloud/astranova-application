@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
 
@@ -5,7 +6,7 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
-                git 'https://github.com/astranova-cloud/astranova-application.git'
+                git branch: 'main', url: 'https://github.com/astranova-cloud/astranova-application.git'
             }
         }
 
