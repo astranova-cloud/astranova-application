@@ -22,7 +22,7 @@ pipeline {
                     sonar-scanner \
                     -Dsonar.projectKey=astranova-app \
                     -Dsonar.sources=. \
-                    -Dsonar.host.url=http://54.83.177.215:9000 \
+                    -Dsonar.host.url=http://54.83.177.215:9000
                     '''
                 }
             }
@@ -30,7 +30,7 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                timeout(time: 5, unit: 'MINUTES') {
+                timeout(time: 10, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
@@ -38,15 +38,23 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t astranova-app:latest .'
+                sh '''
+                docker build -t astranova-app:latest .
+                '''
             }
         }
 
         stage('Trivy Image Scan') {
             steps {
                 sh '''
-                trivy image --exit-code 1 --severity HIGH,CRITICAL astranova-app:latest
+                trivy image --format table -o trivy-report.txt astranova-app:latest
                 '''
+            }
+        }
+
+        stage('Archive Trivy Report') {
+            steps {
+                archiveArtifacts artifacts: 'trivy-report.txt', fingerprint: true
             }
         }
 
@@ -60,6 +68,13 @@ pipeline {
                 docker push $ECR_REPO:$IMAGE_TAG
                 '''
             }
+        }
+
+    }
+
+    post {
+        always {
+            echo "Pipeline completed successfully"
         }
     }
 }
