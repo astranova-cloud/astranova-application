@@ -4,7 +4,7 @@ pipeline {
     environment {
         AWS_REGION = "us-east-1"
         ECR_REPO = "806889657148.dkr.ecr.us-east-1.amazonaws.com/astranova-app"
-        IMAGE_TAG = "latest"
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -36,10 +36,26 @@ pipeline {
             }
         }
 
+        stage('Filesystem Security Scan') {
+            steps {
+                sh '''
+                trivy fs --security-checks vuln,secret,config .
+                '''
+            }
+        }
+
+        stage('Dockerfile Security Scan') {
+            steps {
+                sh '''
+                hadolint Dockerfile
+                '''
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 sh '''
-                docker build -t astranova-app:latest .
+                docker build -t astranova-app:$IMAGE_TAG .
                 '''
             }
         }
@@ -47,7 +63,8 @@ pipeline {
         stage('Trivy Image Scan') {
             steps {
                 sh '''
-                trivy image --format table -o trivy-report.txt astranova-app:latest
+                trivy image --exit-code 1 --severity HIGH,CRITICAL astranova-app:$IMAGE_TAG
+                trivy image --format table -o trivy-report.txt astranova-app:$IMAGE_TAG
                 '''
             }
         }
@@ -64,7 +81,7 @@ pipeline {
                 aws ecr get-login-password --region $AWS_REGION | \
                 docker login --username AWS --password-stdin 806889657148.dkr.ecr.us-east-1.amazonaws.com
 
-                docker tag astranova-app:latest $ECR_REPO:$IMAGE_TAG
+                docker tag astranova-app:$IMAGE_TAG $ECR_REPO:$IMAGE_TAG
                 docker push $ECR_REPO:$IMAGE_TAG
                 '''
             }
@@ -74,7 +91,7 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline completed successfully"
+            echo "Pipeline execution completed"
         }
     }
 }
