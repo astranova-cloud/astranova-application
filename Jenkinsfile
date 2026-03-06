@@ -1,6 +1,15 @@
 pipeline {
 
-    agent { label 'jenkins-agent' }
+    agent any
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+    }
+
+    parameters {
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker image tag')
+    }
 
     environment {
         AWS_REGION = "us-east-1"
@@ -9,41 +18,37 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
+        stage('Clean Workspace') {
             steps {
-                git 'https://github.com/YOUR_USERNAME/astranova-application.git'
+                deleteDir()
+            }
+        }
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/astranova-cloud/astranova-application.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                container('docker') {
-                    sh 'docker build -t astranova-app .'
-                }
+                sh 'docker build -t astranova-app:${IMAGE_TAG} .'
             }
         }
 
-        stage('Login to ECR') {
+        stage('Push Image to ECR') {
             steps {
-                container('docker') {
-                    sh '''
-                    aws ecr get-login-password --region $AWS_REGION \
-                    | docker login --username AWS --password-stdin $ECR_REPO
-                    '''
-                }
-            }
-        }
 
-        stage('Push Image') {
-            steps {
-                container('docker') {
-                    sh '''
-                    docker tag astranova-app:latest $ECR_REPO:latest
-                    docker push $ECR_REPO:latest
-                    '''
-                }
+                sh '''
+                aws ecr get-login-password --region $AWS_REGION \
+                | docker login --username AWS --password-stdin $ECR_REPO
+                '''
+
+                sh 'docker tag astranova-app:${IMAGE_TAG} $ECR_REPO:${IMAGE_TAG}'
+                sh 'docker push $ECR_REPO:${IMAGE_TAG}'
             }
         }
 
     }
+
 }
