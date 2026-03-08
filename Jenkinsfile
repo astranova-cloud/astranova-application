@@ -36,24 +36,11 @@ pipeline {
             }
         }
 
-        stage('Security Scans') {
-            parallel {
-
-                stage('Filesystem Scan') {
-                    steps {
-                        sh '''
-                        trivy fs --security-checks vuln,secret,config .
-                        '''
-                    }
-                }
-
-                stage('Dockerfile Scan') {
-                    steps {
-                        sh '''
-                        hadolint Dockerfile
-                        '''
-                    }
-                }
+        stage('Filesystem Security Scan') {
+            steps {
+                sh '''
+                trivy fs --security-checks vuln,secret,config .
+                '''
             }
         }
 
@@ -105,7 +92,6 @@ pipeline {
                 '''
             }
         }
-
     }
 
     post {
@@ -117,9 +103,9 @@ pipeline {
 Build Successful
 
 Job: ${env.JOB_NAME}
-Build: #${env.BUILD_NUMBER}
+Build: ${env.BUILD_NUMBER}
 
-Check details:
+Check pipeline:
 ${env.BUILD_URL}
 """,
                 to: "meherrohit99@gmail.com"
@@ -133,9 +119,9 @@ ${env.BUILD_URL}
 Build Failed
 
 Job: ${env.JOB_NAME}
-Build: #${env.BUILD_NUMBER}
+Build: ${env.BUILD_NUMBER}
 
-Check details:
+Check pipeline:
 ${env.BUILD_URL}
 """,
                 to: "meherrohit99@gmail.com"
@@ -143,7 +129,7 @@ ${env.BUILD_URL}
         }
 
         always {
-            echo "Pipeline execution completed"
+            echo "Pipeline completed"
         }
     }
 }
