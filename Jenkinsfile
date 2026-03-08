@@ -38,18 +38,14 @@ pipeline {
 
         stage('Filesystem Security Scan') {
             steps {
-                sh '''
-                trivy fs --security-checks vuln,secret,config .
-                '''
+                sh 'trivy fs --security-checks vuln,secret,config .'
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 sh '''
-                docker build \
-                --cache-from $ECR_REPO:latest \
-                -t astranova-app:$IMAGE_TAG .
+                docker build -t astranova-app:$IMAGE_TAG .
                 '''
             }
         }
@@ -57,12 +53,7 @@ pipeline {
         stage('Trivy Image Scan') {
             steps {
                 sh '''
-                trivy image \
-                --exit-code 0 \
-                --severity HIGH,CRITICAL \
-                --format table \
-                -o trivy-report.txt \
-                astranova-app:$IMAGE_TAG
+                trivy image --format table -o trivy-report.txt astranova-app:$IMAGE_TAG
                 '''
             }
         }
@@ -85,13 +76,6 @@ pipeline {
             }
         }
 
-        stage('Sign Docker Image') {
-            steps {
-                sh '''
-                cosign sign --key cosign.key $ECR_REPO:$IMAGE_TAG
-                '''
-            }
-        }
     }
 
     post {
@@ -103,9 +87,8 @@ pipeline {
 Build Successful
 
 Job: ${env.JOB_NAME}
-Build: ${env.BUILD_NUMBER}
+Build Number: ${env.BUILD_NUMBER}
 
-Check pipeline:
 ${env.BUILD_URL}
 """,
                 to: "meherrohit99@gmail.com"
@@ -119,9 +102,8 @@ ${env.BUILD_URL}
 Build Failed
 
 Job: ${env.JOB_NAME}
-Build: ${env.BUILD_NUMBER}
+Build Number: ${env.BUILD_NUMBER}
 
-Check pipeline:
 ${env.BUILD_URL}
 """,
                 to: "meherrohit99@gmail.com"
@@ -129,7 +111,7 @@ ${env.BUILD_URL}
         }
 
         always {
-            echo "Pipeline completed"
+            echo "Pipeline execution completed"
         }
     }
 }
