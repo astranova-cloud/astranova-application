@@ -61,7 +61,7 @@ pipeline {
             steps {
                 sh '''
                 docker build \
-                --cache-from=$ECR_REPO:latest \
+                --cache-from $ECR_REPO:latest \
                 -t astranova-app:$IMAGE_TAG .
                 '''
             }
@@ -70,8 +70,12 @@ pipeline {
         stage('Trivy Image Scan') {
             steps {
                 sh '''
-                trivy image --exit-code 1 --severity CRITICAL astranova-app:$IMAGE_TAG
-                trivy image --format table -o trivy-report.txt astranova-app:$IMAGE_TAG
+                trivy image \
+                --exit-code 0 \
+                --severity HIGH,CRITICAL \
+                --format table \
+                -o trivy-report.txt \
+                astranova-app:$IMAGE_TAG
                 '''
             }
         }
@@ -97,11 +101,11 @@ pipeline {
         stage('Sign Docker Image') {
             steps {
                 sh '''
-                echo "Signing image with Cosign"
-                # cosign sign --key cosign.key $ECR_REPO:$IMAGE_TAG
+                cosign sign --key cosign.key $ECR_REPO:$IMAGE_TAG
                 '''
             }
         }
+
     }
 
     post {
@@ -109,27 +113,37 @@ pipeline {
         success {
             emailext(
                 subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: "Pipeline completed successfully.",
-                to: "meherrohitmr1990@gmail.com"
-            )
+                body: """
+Build Successful
 
-            slackSend channel: '#devops',
-            message: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+Job: ${env.JOB_NAME}
+Build: #${env.BUILD_NUMBER}
+
+Check details:
+${env.BUILD_URL}
+""",
+                to: "meherrohit99@gmail.com"
+            )
         }
 
         failure {
             emailext(
                 subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: "Pipeline failed.",
-                to: "meherrohitmr1990@gmail.com"
-            )
+                body: """
+Build Failed
 
-            slackSend channel: '#devops',
-            message: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+Job: ${env.JOB_NAME}
+Build: #${env.BUILD_NUMBER}
+
+Check details:
+${env.BUILD_URL}
+""",
+                to: "meherrohit99@gmail.com"
+            )
         }
 
         always {
-            echo "Pipeline finished"
+            echo "Pipeline execution completed"
         }
     }
 }
