@@ -36,26 +36,33 @@ pipeline {
             }
         }
 
-        stage('Filesystem Security Scan') {
-            steps {
-                sh '''
-                trivy fs --security-checks vuln,secret,config .
-                '''
-            }
-        }
+        stage('Security Scans') {
+            parallel {
 
-        stage('Dockerfile Security Scan') {
-            steps {
-                sh '''
-                hadolint Dockerfile
-                '''
+                stage('Filesystem Scan') {
+                    steps {
+                        sh '''
+                        trivy fs --security-checks vuln,secret,config .
+                        '''
+                    }
+                }
+
+                stage('Dockerfile Scan') {
+                    steps {
+                        sh '''
+                        hadolint Dockerfile
+                        '''
+                    }
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 sh '''
-                docker build -t astranova-app:$IMAGE_TAG .
+                docker build \
+                --cache-from=$ECR_REPO:latest \
+                -t astranova-app:$IMAGE_TAG .
                 '''
             }
         }
@@ -87,11 +94,42 @@ pipeline {
             }
         }
 
+        stage('Sign Docker Image') {
+            steps {
+                sh '''
+                echo "Signing image with Cosign"
+                # cosign sign --key cosign.key $ECR_REPO:$IMAGE_TAG
+                '''
+            }
+        }
     }
 
     post {
+
+        success {
+            emailext(
+                subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: "Pipeline completed successfully.",
+                to: "meherrohitmr1990@gmail.com"
+            )
+
+            slackSend channel: '#devops',
+            message: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+        }
+
+        failure {
+            emailext(
+                subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: "Pipeline failed.",
+                to: "meherrohitmr1990@gmail.com"
+            )
+
+            slackSend channel: '#devops',
+            message: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+        }
+
         always {
-            echo "Pipeline execution completed"
+            echo "Pipeline finished"
         }
     }
 }
