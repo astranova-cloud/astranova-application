@@ -38,7 +38,9 @@ pipeline {
 
         stage('Filesystem Security Scan') {
             steps {
-                sh 'trivy fs --security-checks vuln,secret,config .'
+                sh '''
+                trivy fs --security-checks vuln,secret,config .
+                '''
             }
         }
 
@@ -53,7 +55,10 @@ pipeline {
         stage('Trivy Image Scan') {
             steps {
                 sh '''
-                trivy image --format table -o trivy-report.txt astranova-app:$IMAGE_TAG
+                trivy image --severity HIGH,CRITICAL \
+                --format table \
+                -o trivy-report.txt \
+                astranova-app:$IMAGE_TAG
                 '''
             }
         }
@@ -68,7 +73,7 @@ pipeline {
             steps {
                 sh '''
                 aws ecr get-login-password --region $AWS_REGION | \
-                docker login --username AWS --password-stdin 806889657148.dkr.ecr.us-east-1.amazonaws.com
+                docker login --username AWS --password-stdin $ECR_REPO
 
                 docker tag astranova-app:$IMAGE_TAG $ECR_REPO:$IMAGE_TAG
                 docker push $ECR_REPO:$IMAGE_TAG
@@ -81,6 +86,12 @@ pipeline {
     post {
 
         success {
+
+            slackSend(
+                channel: '#jenkins-alerts',
+                message: "✅ SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}\n${env.BUILD_URL}"
+            )
+
             emailext(
                 subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """
@@ -89,6 +100,7 @@ Build Successful
 Job: ${env.JOB_NAME}
 Build Number: ${env.BUILD_NUMBER}
 
+Check pipeline:
 ${env.BUILD_URL}
 """,
                 to: "meherrohit99@gmail.com"
@@ -96,6 +108,12 @@ ${env.BUILD_URL}
         }
 
         failure {
+
+            slackSend(
+                channel: '#jenkins-alerts',
+                message: "❌ FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}\n${env.BUILD_URL}"
+            )
+
             emailext(
                 subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """
@@ -104,6 +122,7 @@ Build Failed
 Job: ${env.JOB_NAME}
 Build Number: ${env.BUILD_NUMBER}
 
+Check pipeline:
 ${env.BUILD_URL}
 """,
                 to: "meherrohit99@gmail.com"
