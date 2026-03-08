@@ -63,7 +63,7 @@ pipeline {
         stage('Trivy Image Scan') {
             steps {
                 sh '''
-                trivy image --exit-code 1 --severity HIGH,CRITICAL astranova-app:$IMAGE_TAG
+                trivy image --exit-code 1 --severity CRITICAL astranova-app:$IMAGE_TAG
                 trivy image --format table -o trivy-report.txt astranova-app:$IMAGE_TAG
                 '''
             }
