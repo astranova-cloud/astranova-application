@@ -4,8 +4,8 @@ WORKDIR /app
 
 COPY app.py .
 
-RUN pip install flask
+RUN pip install flask gunicorn
 
 EXPOSE 3000
 
-CMD ["python", "-u", "app.py"]
+CMD ["gunicorn", "-b", "0.0.0.0:3000", "app:app"]
